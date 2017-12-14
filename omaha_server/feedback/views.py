@@ -19,6 +19,8 @@ the License.
 """
 
 from copy import copy
+import tarfile
+import StringIO
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.views.generic import FormView
@@ -37,7 +39,11 @@ from omaha_server.utils import get_client_ip
 dsn = getattr(settings, 'RAVEN_CONFIG', None)
 if dsn:
     dsn = dsn['dsn']
-raven = Client(dsn, name=getattr(settings, 'HOST_NAME', None), release=getattr(settings, 'APP_VERSION', None))
+raven = Client(
+    dsn,
+    name=getattr(settings, 'HOST_NAME', None),
+    release=getattr(settings, 'APP_VERSION', None)
+)
 
 
 class FeedbackFormView(FormView):
@@ -59,7 +65,11 @@ class FeedbackFormView(FormView):
 
         type_callable_map = copy(TYPE_CALLABLE_MAP)
         type_callable_map[FieldDescriptor.TYPE_BYTES] = lambda x: '[binary content]'
-        pb_dict = protobuf_to_dict(submit, type_callable_map=type_callable_map, use_enum_labels=True)
+        pb_dict = protobuf_to_dict(
+            submit,
+            type_callable_map=type_callable_map,
+            use_enum_labels=True
+        )
 
         data = dict(
             description=submit.common_data.description,
@@ -70,9 +80,23 @@ class FeedbackFormView(FormView):
         )
         files = dict()
         if submit.screenshot.binary_content:
-            files['screenshot'] = SimpleUploadedFile('screenshot.png', submit.screenshot.binary_content)
+            files['screenshot'] = SimpleUploadedFile(
+                'screenshot.png',
+                submit.screenshot.binary_content
+            )
         if submit.blackbox.data:
-            files['blackbox'] = SimpleUploadedFile('blackbox.tar.gz', submit.blackbox.data)
+            blackbox_name = 'blackbox.tar'
+            try:
+                tarfile.open(
+                    fileobj=StringIO.StringIO(submit.blackbox.data),
+                    mode='r|gz'
+                )
+                blackbox_name += '.gz'
+            except tarfile.TarError:
+                pass
+            files['blackbox'] = SimpleUploadedFile(
+                blackbox_name, submit.blackbox.data
+            )
         for attach in submit.product_specific_binary_data:
             key = 'attached_file'
             logs_key = 'system_logs'
