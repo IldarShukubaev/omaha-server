@@ -1,0 +1,56 @@
+language: python
+dist: trusty
+matrix:
+  allow_failures:
+    - env: TOX_ENV=py34
+  include:
+    - python: "2.7"
+      env:
+        - TOX_ENV=py27
+        - OMAHA_SERVER_PRIVATE=True
+    - python: "2.7"
+      env:
+        - TOX_ENV=py27
+        - OMAHA_SERVER_PRIVATE=False
+    - python: "2.7"
+      env:
+        - TOX_ENV=py27
+        - DJANGO_SETTINGS_MODULE=omaha_server.settings_test_postgres
+    - python: "2.7"
+      env:
+        - TOX_ENV=py27
+        - PATH_TO_TEST=omaha.tests.test_public
+        - DJANGO_SETTINGS_MODULE=omaha_server.settings_test_postgres
+        - OMAHA_SERVER_PRIVATE=False
+    - python: "3.4"
+      env: TOX_ENV=py34
+    - python: "2.7"
+      env: TOX_ENV=coverage
+
+cache: pip
+sudo: false
+
+virtualenv:
+  system_site_packages: true
+
+addons:
+  apt:
+    packages:
+    - python-lxml
+    - python-psycopg2
+    - python-dev
+
+env:
+  global:
+    - HOST_NAME: 'travis-ci'
+    - SECRET_KEY: 'SECRET_KEY'
+    - GRPC_PYTHON_BUILD_WITH_CYTHON: 1
+
+services:
+  - redis-server
+
+install:
+  - pip install tox==2.2.1
+
+script:
+  - tox -e $TOX_ENV
